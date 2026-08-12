@@ -313,62 +313,7 @@ spin() {
     done
 }
 
-fix_dns() {
-    clear
-    title="DNS Replacement"
-    logo
-    echo && echo -e "${MAGENTA}$title${NC}"
-    echo && printf "\e[93m+-------------------------------------+\e[0m\n"
-    interface_name=$(ip -o link show | awk '/state UP/ {print $2}' | sed 's/:$//')
-    if [ -z "$interface_name" ]; then
-        echo && echo -e "${RED}Error: Could not determine network interface.${NC}"
-        return 1
-    fi
-    echo && echo -e "${YELLOW}Select DNS provider:${NC}"
-    echo -e "$RED 1. $CYAN Google Public DNS (8.8.8.8, 8.8.4.4)${NC}"
-    echo -e "$RED 2. $CYAN Cloudflare DNS (1.1.1.1, 1.1.1.2)${NC}"
-    echo -e "$RED 3. $CYAN Quad9 DNS (9.9.9.9, 149.112.112.112)${NC}"
-    echo -e "$RED 4. $CYAN 403 online DNS (Iranians anti tahrim) (10.202.10.202, 10.202.10.102)${NC}"
-    echo && read -p "Enter your choice (1-4): " choice
-    case $choice in
-        1)
-            dns_servers="nameserver 8.8.8.8\nnameserver 8.8.4.4"
-            ;;
-        2)
-            dns_servers="nameserver 1.1.1.1\nnameserver 1.1.1.2"
-            ;;
-        3)
-            dns_servers="nameserver 9.9.9.9\nnameserver 149.112.112.112"
-            ;;
-        4)
-            dns_servers="nameserver 10.202.10.202\nnameserver 10.202.10.102"
-            ;;
-        *)
-            echo && echo -e "${RED}Invalid choice.${NC}"
-            return 1
-            ;;
-    esac
-    if ! command -v resolvconf >/dev/null 2>&1; then
-        echo && echo -e "${YELLOW}resolvconf not found, attempting to install...${NC}"
-        if ! apt-get install -y resolvconf; then
-            echo && echo -e "${RED}Error installing resolvconf.${NC}"
-            return 1
-        fi
-    fi
-    if command -v resolvconf >/dev/null 2>&1; then
-        echo && echo -e "${YELLOW}Using resolvconf to configure DNS...${NC}"
-        echo "$dns_servers" | resolvconf -a "$interface_name"
-    else
-        echo && echo -e "${YELLOW}resolvconf not found, using /etc/resolv.conf...${NC}"
-        rm -rf /etc/resolv.conf && touch /etc/resolv.conf
-        echo "$dns_servers" > /etc/resolv.conf
-    fi
-    spin & SPIN_PID=$!
-    wait $SPIN_PID
-    echo && echo -e "${GREEN}System DNS Optimized.${NC}"
-    sleep 1
-    press_enter
-}
+## DNS modification removed (unneeded)
 
 complete_update() {
     clear
@@ -381,8 +326,6 @@ complete_update() {
     apt-get upgrade -y
     apt-get autoremove -y
     apt-get clean -y
-    echo "140.82.114.4 github.com" | sudo tee -a /etc/hosts
-    echo "185.199.108.133 raw.githubusercontent.com" | sudo tee -a /etc/hosts
     echo && echo -e "${GREEN}System update & upgrade completed.${NC}"
     sleep 1
     press_enter
@@ -585,16 +528,12 @@ net.ipv4.tcp_max_tw_buckets = 1440000
 net.ipv4.tcp_mem = 65536 1048576 33554432
 net.ipv4.tcp_mtu_probing = 1
 net.ipv4.tcp_notsent_lowat = 32768
-net.ipv4.tcp_retries1 = 3
-net.ipv4.tcp_retries2 = 5
 net.ipv4.tcp_fastopen = 3
 net.ipv4.tcp_sack = 1
 net.ipv4.tcp_dsack = 1
 net.ipv4.tcp_slow_start_after_idle = 0
 net.ipv4.tcp_window_scaling = 1
 net.ipv4.tcp_adv_win_scale = 0
-net.ipv4.tcp_ecn = 1
-net.ipv4.tcp_ecn_fallback = 1
 net.ipv4.tcp_syncookies = 1
 
 # UDP settings
@@ -653,85 +592,15 @@ EOL
     echo && echo -e "${GREEN}Sysctl configuration and optimization complete.${NC}"
     press_enter
 }
-optimize_ssh_configuration() {
-    clear
-    SSH_PATH="/etc/ssh/sshd_config"
-    title="Improve SSH Configuration and Optimize SSHD"
-    logo
-    echo && echo -e "${MAGENTA}$title${NC}\n"
-    echo && echo -e "\e[93m+-------------------------------------+\e[0m\n"
-    if [ -f "$SSH_PATH" ]; then
-        cp "$SSH_PATH" "${SSH_PATH}.bak"
-        echo && echo -e "${YELLOW}Backup of the original SSH configuration created at ${SSH_PATH}.bak${NC}"
-    else
-        echo && echo -e "${RED}Error: SSH configuration file not found at ${SSH_PATH}.${NC}"
-        return 1
-    fi
-echo && cat <<EOL > "$SSH_PATH"
-# Optimized SSH configuration for improved security and performance
-
-Protocol 2
-HostKeyAlgorithms ssh-ed25519-cert-v01@openssh.com,ssh-ed25519,ecdsa-sha2-nistp256,ssh-rsa
-Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com
-MACs hmac-sha2-256,hmac-sha2-512
-KexAlgorithms curve25519-sha256,ecdh-sha2-nistp256,diffie-hellman-group-exchange-sha256
-UseDNS no
-MaxSessions 10
-Compression no
-TCPKeepAlive yes
-ClientAliveInterval 300
-ClientAliveCountMax 3
-AllowAgentForwarding no
-AllowTcpForwarding no
-GatewayPorts no
-PermitTunnel no
-PermitRootLogin no
-Banner /etc/ssh/banner
-X11Forwarding no
-PrintMotd no
-PrintLastLog yes
-MaxAuthTries 3
-LoginGraceTime 1m
-MaxStartups 10:30:60
-EOL
-    echo "WARNING: Unauthorized access to this system is prohibited." > /etc/ssh/banner
-    if service ssh restart; then
-        echo && echo -e "${GREEN}SSH and SSHD configuration and optimization complete.${NC}"
-    else
-        echo && echo -e "${RED}Failed to restart SSH service. Please check the configuration.${NC}"
-        return 1
-    fi
-    press_enter
-}
+## SSH configuration modification removed (unneeded)
 
 grub_tuning() {
-  clear
-  logo
-  title="CPU Optimizing and Tuning (GRUB)"
-  echo && echo -e "${MAGENTA}$title${NC}"
-  echo && echo -e "\e[93m+-------------------------------------+\e[0m\n"
-  cp /etc/default/grub /etc/default/grub.bak
-  echo && echo -e "${YELLOW}Backup of the original grub configuration created at /etc/default/grub.bak${NC}" && echo
-  modify_grub_param() {
-    param="$1"
-    value="$2"
-    sed -i "s/^\($param\)=.*/\1=$value/" /etc/default/grub || {
-      echo && echo -e "${RED}Error modifying GRUB parameter: $param${NC}"
-      return 1
-    }
-  }
-  modify_grub_param "GRUB_CMDLINE_LINUX_DEFAULT" "quiet splash"
-  if ! grep -q "intel_pstate" /etc/default/grub; then
-    modify_grub_param "GRUB_CMDLINE_LINUX_DEFAULT" "$(grep -oP '(?<=GRUB_CMDLINE_LINUX_DEFAULT=").*(?=")' /etc/default/grub) intel_pstate=active"
-  fi
-  echo && echo -e "${YELLOW}Updating GRUB configuration...${NC}"
-  update-grub || {
-    echo && echo -e "${RED}Error updating GRUB configuration.${NC}"
-    return 1
-  }
-  echo && echo -e "${GREEN}GRUB configuration updated successfully!${NC}"
-  echo && echo -e "${YELLOW}Reboot your system to apply the changes.${NC}"
-  press_enter
+    clear
+    title="GRUB Tuning Disabled"
+    logo
+    echo && echo -e "${MAGENTA}$title${NC}"
+    echo && echo -e "${YELLOW}GRUB tuning has been disabled per user request. No changes will be made to /etc/default/grub.${NC}"
+    press_enter
 }
 ask_bbr_version() {
     check_Hybla() {
@@ -957,12 +826,10 @@ while true; do
     case $choice in
         1)
             clear
-            fun_bar "Updating and replacing DNS nameserver" fix_dns
             fun_bar "Complete system update and upgrade" complete_update
             fun_bar "Installing useful packages" installations
             fun_bar "Creating swap file with 512MB" swap_maker_1
             fun_bar "Updating sysctl configuration" remove_old_sysctl
-            fun_bar "Updating and modifying SSH configuration" remove_old_ssh_conf
             ask_bbr_version
             final
             ;;
@@ -970,12 +837,10 @@ while true; do
             sourcelist
             complete_update
             installations
-            fix_dns
             set_timezone
             swap_maker
             remove_old_sysctl
             grub_tuning
-            remove_old_ssh_conf
             ask_bbr_version
             final
             ;;
